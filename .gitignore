@@ -7,6 +7,8 @@ xcuserdata/
 
 ## Obj-C/Swift specific
 *.hmap
+DerivedData/
+.DS_Store
 
 ## App packaging
 *.ipa
@@ -60,3 +62,6 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+.swiftpm/
+/**/*.xcodeproj/
