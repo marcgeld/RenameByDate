@@ -13,19 +13,21 @@ This file is the single source of truth for what the project does and how it is 
 ## Usage
 
 ```bash
-rbdate <folder>                 # dry run: prints what would be renamed
-rbdate --apply <folder>         # actually rename
-rbdate --apply --recursive ~/Documents/Invoices
+rbdate <folder>                 # rename files
+rbdate --dryrun <folder>        # print what would be renamed without changing files
+rbdate --recursive ~/Documents/Invoices
 ```
 
 | Flag | Effect |
 |------|--------|
-| `--apply` | Perform the renames. Without it, the run is a dry run that only reports the plan. |
+| `--dryrun` | Show planned renames without changing any files. Without this flag, renames are applied. |
 | `--recursive` | Process subfolders too. |
 | `--set-date` | Also stamp the file's creation/modification dates with the extracted document date. |
 | `--out <dir>` | Copy renamed files into `<dir>` instead of renaming in place. Created if missing. |
 | `--prefix <format>` | Date prefix format (default `YYYYMMDD`). Accepts macOS DateFormatter patterns (`yyyyMMdd`), uppercase variants (`YYYY-MM-DD`), or unix strftime tokens (`%Y%m%d`). Also usable as `-prefix`. |
-| `--verbose` | Print each planned rename and each skipped file. |
+| `--verbose` | Print each planned rename during applied runs and print each skipped file. Dry runs always print planned renames. |
+| `--showpath` | Print full paths for planned renames. By default, only the old and new file names are printed. |
+| `--disallowed <chars>` | Characters not allowed in generated file names; every listed character is removed. By default (option omitted), only letters, digits, space, and `( ) - _ .` are kept. Space runs left behind by removed characters are collapsed. |
 
 Files are skipped when they already start with a date prefix (`YYYY-MM-DD` or `YYYYMMDD`) or when no date can be found at all. A run reports planned, skipped, failed, and stamped counts.
 

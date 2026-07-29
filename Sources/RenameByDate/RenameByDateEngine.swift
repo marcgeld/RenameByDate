@@ -8,14 +8,16 @@ public struct RenameByDateConfig {
     public let stamp: Bool
     public let apply: Bool
     public let prefixFormat: String
+    public let disallowedCharacters: String?
 
-    public init(inputFolder: String, outputFolder: String? = nil, recursive: Bool = false, stamp: Bool = false, apply: Bool = false, prefixFormat: String = "yyyyMMdd") {
+    public init(inputFolder: String, outputFolder: String? = nil, recursive: Bool = false, stamp: Bool = false, apply: Bool = false, prefixFormat: String = "yyyyMMdd", disallowedCharacters: String? = nil) {
         self.inputFolder = inputFolder
         self.outputFolder = outputFolder
         self.recursive = recursive
         self.stamp = stamp
         self.apply = apply
         self.prefixFormat = prefixFormat
+        self.disallowedCharacters = disallowedCharacters
     }
 }
 
@@ -180,7 +182,7 @@ public final class RenameByDateEngine {
             let vendor = DateExtraction.vendorName(fromText: text, fallback: vendorFallback)
             let ref = DateExtraction.reference(fromText: text) ?? ""
             let dateString = DateExtraction.format(date, pattern: config.prefixFormat)
-            let newName = uniqueName(vendor: vendor, ref: ref, dateString: dateString, outputFolder: outFolder, reserved: &reservedNames)
+            let newName = uniqueName(vendor: vendor, ref: ref, dateString: dateString, outputFolder: outFolder, disallowedCharacters: config.disallowedCharacters, reserved: &reservedNames)
             let newPath = (outFolder as NSString).appendingPathComponent(newName)
 
             logger.debug("Planned: \(fileName, privacy: .public) -> \(newName, privacy: .public)")
@@ -216,11 +218,12 @@ public final class RenameByDateEngine {
     // nor with names already claimed earlier in this run. Reserved names are
     // compared case-insensitively because the default macOS file system is
     // case-insensitive, so "Acme.pdf" and "acme.pdf" would still collide.
-    func uniqueName(vendor: String, ref: String, dateString: String, outputFolder: String, reserved: inout Set<String>) -> String {
-        let stem = [dateString, vendor, ref]
+    func uniqueName(vendor: String, ref: String, dateString: String, outputFolder: String, disallowedCharacters: String? = nil, reserved: inout Set<String>) -> String {
+        let joined = [dateString, vendor, ref]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
             .replacingOccurrences(of: "/", with: "-")
+        let stem = Self.sanitize(joined, disallowedCharacters: disallowedCharacters)
 
         var candidate = stem + ".pdf"
         var counter = 1
@@ -230,6 +233,26 @@ public final class RenameByDateEngine {
         }
         reserved.insert(candidate.lowercased())
         return candidate
+    }
+
+    // Removes characters that are not permitted in generated file names.
+    // When an explicit disallowed set is given, exactly those characters are
+    // stripped; otherwise only alphanumerics, space, and "( ) - _ ." are kept.
+    // Space runs left behind by removed characters are collapsed.
+    static func sanitize(_ name: String, disallowedCharacters: String?) -> String {
+        let keep: (UnicodeScalar) -> Bool
+        if let disallowedCharacters {
+            let disallowed = CharacterSet(charactersIn: disallowedCharacters)
+            keep = { !disallowed.contains($0) }
+        } else {
+            var allowed = CharacterSet.alphanumerics
+            allowed.insert(charactersIn: " ()-_.")
+            keep = { allowed.contains($0) }
+        }
+        let cleaned = String(String.UnicodeScalarView(name.unicodeScalars.filter(keep)))
+        return cleaned
+            .split(separator: " ", omittingEmptySubsequences: true)
+            .joined(separator: " ")
     }
 
     private func isTaken(_ name: String, in folder: String, reserved: Set<String>) -> Bool {
